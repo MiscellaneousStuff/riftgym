@@ -65,6 +65,7 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         e_flee: bool = False,
         opp_policy: OppPolicy | None = None,
         omit_opp_action: bool = False,
+        claim_opp: bool = True,
         reset_jitter_hp: float = 0.0,
         reset_jitter_mp: float = 0.0,
     ) -> None:
@@ -91,10 +92,17 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         # Seeded by reset(seed=...). Default opp + jitter draw from this.
         self.rng: np.random.Generator = np.random.default_rng()
 
+        # When False, only ``me_cid`` is claimed; ``opp_cid``'s engine BT
+        # keeps running. Combined with ``omit_opp_action=True`` this gives
+        # "agent vs engine bot" eval — the agent plays its policy and
+        # the bridge does not interfere with the opp client_id.
+        self.claim_opp = claim_opp
+
+        claim_ids = [me_cid, opp_cid] if claim_opp else [me_cid]
         self._env = LoLEnv(
             host=host,
             port=port,
-            claim_ids=[me_cid, opp_cid],
+            claim_ids=claim_ids,
             spots=[
                 {"client_id": me_cid, "x": me_spot[0], "y": me_spot[1]},
                 {"client_id": opp_cid, "x": opp_spot[0], "y": opp_spot[1]},
