@@ -2,8 +2,6 @@
 
 A Python RL environment and training library for the [brokenwings](https://github.com/MiscellaneousStuff/brokenwings) game server (a 1.0.0.126 League of Legends reimplementation). Modeled in spirit on DeepMind's [pysc2](https://github.com/google-deepmind/pysc2).
 
-> Pre-alpha. The API is unstable until v0.1.
-
 ## Status
 
 riftgym is the standalone successor to `brokenwings/tools/`. The first milestone is end-to-end eval against the engine BT through a containerized server — see [issue #1](https://github.com/MiscellaneousStuff/riftgym/issues/1).
