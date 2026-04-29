@@ -56,9 +56,17 @@ class _FakeRunConfig(RunConfig):
 
 
 def _accept_then_close(listener: socket.socket) -> None:
+    """Accept any number of connections, send one byte (so wait_for_port's
+    recv() succeeds), then close. wait_for_port now requires a real
+    frame from the bridge to consider the server up — a bare accept
+    isn't enough."""
     try:
-        client, _ = listener.accept()
-        client.close()
+        while True:
+            client, _ = listener.accept()
+            try:
+                client.sendall(b"x")
+            finally:
+                client.close()
     except OSError:
         return
 

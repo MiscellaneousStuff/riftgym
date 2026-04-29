@@ -164,6 +164,12 @@ class ContainerRunConfig(RunConfig):
     container_rl_port: int = 5120
     env: dict[str, str] = field(default_factory=dict)
     extra_run_args: tuple[str, ...] = ()
+    # Override the image's default ENTRYPOINT. Required for the public
+    # brokenwings image, whose default entrypoint is ``play.sh`` (the
+    # human-vs-bot demo); riftgym wants ``server.sh``. Compose users
+    # also override the entrypoint, but ``docker run`` doesn't see
+    # compose config — must be passed explicitly.
+    entrypoint: tuple[str, ...] | None = None
     stop_timeout_s: float = 5.0
     name_prefix: str = "riftgym"
 
@@ -189,10 +195,18 @@ class ContainerRunConfig(RunConfig):
             "-p",
             f"{self.host_bind}:{rl_port}:{self.container_rl_port}/tcp",
         ]
+        if self.entrypoint is not None:
+            # `docker run` only takes a single string for --entrypoint, so
+            # the first element is the executable and the rest become the
+            # container's argv (after the image name, which is itself
+            # interpreted as more argv when --entrypoint is overridden).
+            cmd.extend(["--entrypoint", self.entrypoint[0]])
         for k, v in self.env.items():
             cmd.extend(["-e", f"{k}={v}"])
         cmd.extend(self.extra_run_args)
         cmd.append(f"{self.image}:{self.tag}")
+        if self.entrypoint is not None and len(self.entrypoint) > 1:
+            cmd.extend(self.entrypoint[1:])
 
         log.info(
             "starting brokenwings container %s (game=%d, rl=%d, image=%s:%s)",

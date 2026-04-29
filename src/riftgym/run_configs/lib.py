@@ -82,24 +82,34 @@ def wait_for_port(
     port: int,
     *,
     timeout_s: float = 60.0,
-    poll_interval_s: float = 0.25,
+    poll_interval_s: float = 0.5,
 ) -> None:
-    """Block until ``host:port`` accepts a TCP connection or ``timeout_s`` elapses.
+    """Block until a real bridge is listening on ``host:port``.
 
-    Raises :class:`TimeoutError` on miss. Used by ``ServerLauncher`` after
-    :meth:`RunConfig.start` returns to confirm the bridge is actually
-    listening before handing the port to a gym env.
+    A bare TCP-accept probe isn't enough: Docker's userland port proxy
+    accepts host-side connections before the in-container server has
+    actually bound the port, then drops them when the forward fails.
+    So we connect AND read at least one byte — the brokenwings RL
+    bridge emits an obs frame within ~33 ms of accept (one tick at
+    ``RL_HZ=30``), so a successful read confirms a real listener.
+
+    Raises :class:`TimeoutError` on miss. Used by ``ServerLauncher``
+    after :meth:`RunConfig.start` returns.
     """
     deadline = time.monotonic() + timeout_s
     last_err: OSError | None = None
     while time.monotonic() < deadline:
         try:
-            with socket.create_connection((host, port), timeout=poll_interval_s):
+            with socket.create_connection((host, port), timeout=poll_interval_s) as s:
+                s.settimeout(2.0)
+                data = s.recv(1)
+                if not data:
+                    raise OSError("bridge closed without emitting a frame")
                 return
         except OSError as exc:
             last_err = exc
             time.sleep(poll_interval_s)
     raise TimeoutError(
-        f"server on {host}:{port} did not accept TCP within {timeout_s:.1f}s "
-        f"(last error: {last_err})"
+        f"server on {host}:{port} did not produce a bridge frame within "
+        f"{timeout_s:.1f}s (last error: {last_err})"
     )

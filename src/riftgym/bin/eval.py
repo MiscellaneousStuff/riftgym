@@ -114,6 +114,10 @@ def main(argv: list[str] | None = None) -> int:
         image=args.image,
         tag=args.tag,
         pull_policy=args.pull,
+        # Brokenwings's image defaults to play.sh (human-vs-bot demo);
+        # riftgym wants the server-only entrypoint. tini reaps the .NET
+        # process on container stop.
+        entrypoint=("/usr/bin/tini", "--", "/app/entrypoints/server.sh"),
     )
 
     print(f"Loading checkpoint: {args.model}", flush=True)
