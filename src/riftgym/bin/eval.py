@@ -17,6 +17,7 @@ head-to-head modes will land in follow-up issues.
 from __future__ import annotations
 
 import argparse
+import contextlib
 import logging
 import sys
 from pathlib import Path
@@ -118,13 +119,15 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Loading checkpoint: {args.model}", flush=True)
     model = MaskablePPO.load(args.model.as_posix(), device="cpu")
 
-    with ServerLauncher(
+    launcher = ServerLauncher(
         n=1,
         run_config=rc,
         base_game_port=args.base_game_port,
         base_rl_port=args.base_rl_port,
         port_ready_timeout_s=args.port_ready_timeout,
-    ) as launcher:
+    )
+    launcher.start()
+    try:
         rl_port = launcher.rl_ports[0]
         print(f"Bridge ready on 127.0.0.1:{rl_port}. Connecting env.", flush=True)
 
@@ -145,6 +148,19 @@ def main(argv: list[str] | None = None) -> int:
             return _run_eval(env, model, episodes=args.episodes, deterministic=args.deterministic)
         finally:
             env.close()
+    except BaseException:
+        # Dump container logs on failure so the user can see why the
+        # server died. Without this, --rm tears down the container
+        # before there's any chance to ``docker logs`` it.
+        for i, h in enumerate(launcher.handles):
+            logs = ""
+            with contextlib.suppress(Exception):
+                logs = h.logs()
+            if logs:
+                sys.stderr.write(f"\n--- container {i} logs ---\n{logs}\n")
+        raise
+    finally:
+        launcher.close()
 
 
 def _run_eval(
