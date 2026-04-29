@@ -1,0 +1,89 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "riftgym"
+version = "0.0.1"
+description = "A League of Legends RL environment and training library, modeled on pysc2."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "MiscellaneousStuff" }]
+keywords = ["reinforcement-learning", "league-of-legends", "gymnasium", "rl-environment"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Real Time Strategy",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "gymnasium>=1.0",
+    "numpy>=1.26",
+]
+
+[project.optional-dependencies]
+sb3 = [
+    "stable-baselines3>=2.4",
+    "sb3-contrib>=2.4",
+    "torch>=2.2",
+]
+perf = ["psutil>=5.9"]
+dev = [
+    "ruff>=0.6",
+    "pyright>=1.1.380",
+    "pytest>=8",
+    "pytest-timeout>=2.3",
+]
+
+[project.scripts]
+riftgym-eval = "riftgym.bin.eval:main"
+riftgym-launch = "riftgym.bin.launch_servers:main"
+
+[project.urls]
+Repository = "https://github.com/MiscellaneousStuff/riftgym"
+Issues = "https://github.com/MiscellaneousStuff/riftgym/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/riftgym"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "F", "W",   # pycodestyle + pyflakes
+    "I",             # isort
+    "UP",            # pyupgrade
+    "B",             # flake8-bugbear
+    "SIM",           # flake8-simplify
+    "RUF",           # ruff-specific
+]
+ignore = [
+    "E501",  # line length handled by formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B", "SIM"]
+
+[tool.pyright]
+include = ["src/riftgym"]
+pythonVersion = "3.11"
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+markers = [
+    "integration: requires a running brokenwings server (set RIFTGYM_INTEGRATION=1)",
+    "perf: long-running performance test (nightly only)",
+]
