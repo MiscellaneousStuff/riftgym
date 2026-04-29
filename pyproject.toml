@@ -77,8 +77,17 @@ ignore = [
 [tool.pyright]
 include = ["src/riftgym"]
 pythonVersion = "3.11"
-typeCheckingMode = "strict"
+# `standard` rather than `strict` because the bridge wire format is
+# `dict[str, Any]` (JSON straight off the socket), and strict mode flags
+# every `.get()` chain off those dicts as `Unknown`. Standard still
+# catches the real issues — undefined names, missing imports, concrete
+# type mismatches.
+typeCheckingMode = "standard"
 reportMissingTypeStubs = false
+# gymnasium types `Env.metadata` as an instance attribute even though it
+# is conventionally a class-level dict. Subclasses naturally override it
+# with `ClassVar[dict[str, Any]]`; suppress the noise.
+reportIncompatibleVariableOverride = false
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
