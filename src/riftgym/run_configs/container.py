@@ -13,6 +13,7 @@ For local development point at a locally-built image with
 
 from __future__ import annotations
 
+import atexit
 import contextlib
 import logging
 import shutil
@@ -57,6 +58,13 @@ class ContainerHandle:
         self._rl_port = rl_port
         self._stop_timeout_s = stop_timeout_s
         self._terminated = False
+        # Belt-and-braces cleanup: if the user Ctrl+Cs out of an eval
+        # before the surrounding context manager runs, atexit still
+        # fires terminate(). Without this, --rm-tagged containers stay
+        # running until the next reboot, holding the host ports they
+        # bound. terminate() is idempotent so the redundant call from
+        # __exit__ during a normal shutdown is harmless.
+        atexit.register(self.terminate)
 
     @property
     def container_id(self) -> str:
@@ -85,6 +93,7 @@ class ContainerHandle:
         if self._terminated:
             return
         self._terminated = True
+        atexit.unregister(self.terminate)
         # `--rm` on `docker run` removes the container after stop, so
         # `docker stop` is the only call we need. Suppress errors so a
         # double-terminate or already-dead container doesn't raise.
