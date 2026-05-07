@@ -28,10 +28,10 @@ from riftgym.launcher import (
     DEFAULT_BASE_RL_PORT,
     ServerLauncher,
 )
-from riftgym.run_configs import ContainerRunConfig
+from riftgym.run_configs import ComposeRunConfig, ContainerRunConfig
 
 DEFAULT_IMAGE = "ghcr.io/miscellaneousstuff/brokenwings"
-DEFAULT_TAG = "latest"
+DEFAULT_TAG = "release"
 
 # Tight 1v1 spawn — ~849u apart on the diagonal, well inside Ezreal Q
 # range and inside the engine BT's KillChampionAttackSequence threat
@@ -68,6 +68,19 @@ def _build_arg_parser() -> argparse.ArgumentParser:
         choices=("missing", "always", "never"),
         default="missing",
         help="Image pull policy. Use 'never' for local dev images.",
+    )
+    p.add_argument(
+        "--compose-file",
+        type=Path,
+        default=None,
+        help="Use ComposeRunConfig with this compose YAML instead of "
+        "bare `docker run`. The YAML must declare a service (default "
+        "`server`) that publishes the RL bridge port.",
+    )
+    p.add_argument(
+        "--compose-service",
+        default="server",
+        help="Service name to bring up in the compose file. Default `server`.",
     )
     p.add_argument("--base-game-port", type=int, default=DEFAULT_BASE_GAME_PORT)
     p.add_argument("--base-rl-port", type=int, default=DEFAULT_BASE_RL_PORT)
@@ -110,15 +123,29 @@ def main(argv: list[str] | None = None) -> int:
 
     from riftgym.env.lol_gym import LoLGymEnv
 
-    rc = ContainerRunConfig(
-        image=args.image,
-        tag=args.tag,
-        pull_policy=args.pull,
-        # Brokenwings's image defaults to play.sh (human-vs-bot demo);
-        # riftgym wants the server-only entrypoint. tini reaps the .NET
-        # process on container stop.
-        entrypoint=("/usr/bin/tini", "--", "/app/entrypoints/server.sh"),
-    )
+    rc: ContainerRunConfig | ComposeRunConfig
+    if args.compose_file is not None:
+        # Compose path: the YAML's `entrypoint:` block already pins
+        # server.sh, so we don't need an entrypoint override here.
+        # Image/tag overrides flow through env vars consumed by the
+        # YAML's `${BROKENWINGS_IMAGE:-...}` / `${BROKENWINGS_TAG:-...}`.
+        rc = ComposeRunConfig(
+            compose_file=args.compose_file,
+            service=args.compose_service,
+            pull_policy=args.pull,
+            image_override=(args.image if args.image != DEFAULT_IMAGE else None),
+            tag_override=(args.tag if args.tag != DEFAULT_TAG else None),
+        )
+    else:
+        rc = ContainerRunConfig(
+            image=args.image,
+            tag=args.tag,
+            pull_policy=args.pull,
+            # Brokenwings's image defaults to play.sh (human-vs-bot demo);
+            # riftgym wants the server-only entrypoint. tini reaps the
+            # .NET process on container stop.
+            entrypoint=("/usr/bin/tini", "--", "/app/entrypoints/server.sh"),
+        )
 
     print(f"Loading checkpoint: {args.model}", flush=True)
     model = MaskablePPO.load(args.model.as_posix(), device="cpu")

@@ -16,30 +16,18 @@ from __future__ import annotations
 import atexit
 import contextlib
 import logging
-import shutil
 import subprocess
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from riftgym.run_configs._docker import docker_bin as _docker_bin
 from riftgym.run_configs.lib import RunConfig, ServerHandle
 
 log = logging.getLogger(__name__)
 
 PullPolicy = Literal["missing", "always", "never"]
-
-
-def _docker_bin() -> str:
-    docker = shutil.which("docker")
-    if docker is None:
-        raise RuntimeError(
-            "`docker` CLI not found on PATH. ContainerRunConfig requires Docker "
-            "Desktop or a docker-compatible runtime. Install Docker, or use a "
-            "different RunConfig (e.g. BrokenwingsLocalBuildRunConfig for "
-            "running from a local .NET build)."
-        )
-    return docker
 
 
 class ContainerHandle:

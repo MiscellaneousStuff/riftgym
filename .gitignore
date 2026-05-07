@@ -154,3 +154,6 @@ Thumbs.db
 /runs/
 /checkpoints/
 *.zip
+
+# Claude Code session/plan notes (machine-local, per brokenwings convention)
+.claude/

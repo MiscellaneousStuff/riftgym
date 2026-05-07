@@ -14,22 +14,42 @@ Python 3.11+ required. Docker required for the container deployment.
 
 ## Quickstart — eval a checkpoint vs the engine BT
 
-The brokenwings image isn't published to a registry yet, so build it locally first (one-off, ~30s after first build):
+Drop a trained MaskablePPO checkpoint at `checkpoints/agent.zip`, then pick one of the two paths below.
+
+### Path A — bare `docker run` (default)
 
 ```bash
-cd ../brokenwings && docker compose -f docker/compose.yaml build server
+riftgym-eval ./checkpoints/agent.zip --vs-engine-bot --episodes 50
 ```
 
-Drop a trained MaskablePPO checkpoint at `checkpoints/agent.zip`, then:
+Pulls the public brokenwings image from GHCR (`ghcr.io/miscellaneousstuff/brokenwings:latest`) on first invocation, spawns one server via `docker run -d`, runs the eval, tears the container down on exit. The agent plays `cid=0`, `cid=1` is left engine-controlled (the in-tree Ezreal behaviour tree); spawns are tightened to ~849u apart so the BT engages on respawn.
+
+### Path B — `docker compose` (declarative)
 
 ```bash
 riftgym-eval ./checkpoints/agent.zip --vs-engine-bot --episodes 50 \
-    --image brokenwings --pull never
+    --compose-file ./compose.yaml
 ```
 
-This pulls the agent in `cid=0`, leaves `cid=1` engine-controlled (the in-tree Ezreal behaviour tree), tightens the spawn to ~849u apart so the BT engages on respawn, and prints W/L/D + win rate per episode. The brokenwings 40k-step baseline scores ~77% over 100 episodes against the BT.
+Same outcome, but the server lifecycle is owned by an isolated compose project (`-p riftgym-srv-<uuid>`) declared in [`compose.yaml`](compose.yaml). Useful when you want to extend the deployment (sidecars, settings-JSON mounts, multi-server topologies for training) without burying flags inside `docker run` argv. Each `riftgym-eval` / `riftgym-launch` call creates and tears down its own compose project, so concurrent runs don't collide.
 
-Once the GHCR release workflow lands the public image, `--image` and `--pull` will be optional.
+### Iterating on a local brokenwings build
+
+For brokenwings devs, rebuild the image locally and point either path at it:
+
+```bash
+cd ../brokenwings && docker compose -f docker/compose.yaml build server
+
+# Path A:
+riftgym-eval ./checkpoints/agent.zip --vs-engine-bot --image brokenwings --pull never
+
+# Path B (override via env vars consumed by compose.yaml):
+BROKENWINGS_IMAGE=brokenwings BROKENWINGS_TAG=latest \
+    riftgym-eval ./checkpoints/agent.zip --vs-engine-bot \
+    --compose-file ./compose.yaml --pull never
+```
+
+The brokenwings 40k-step baseline scores ~77% over 100 episodes against the BT.
 
 ## Library usage
 

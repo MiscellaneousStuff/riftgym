@@ -1,0 +1,32 @@
+# riftgym/compose.yaml — server-only brokenwings via docker-compose.
+#
+# By default, pulls the public brokenwings image from GHCR. For local
+# brokenwings dev (iterating on the C# server), build a local image
+# and override:
+#
+#     cd ../brokenwings && docker compose -f docker/compose.yaml build server
+#     export BROKENWINGS_IMAGE=brokenwings BROKENWINGS_TAG=latest
+#     docker compose -f compose.yaml up -d server
+#
+# Driven programmatically by `riftgym.run_configs.ComposeRunConfig`,
+# which sets RIFTGYM_GAME_PORT / RIFTGYM_RL_PORT per server instance
+# and (for training) RIFTGYM_SETTINGS_JSON pointing at a multilane
+# settings JSON to mount over the in-container default.
+services:
+  server:
+    image: ${BROKENWINGS_IMAGE:-ghcr.io/miscellaneousstuff/brokenwings}:${BROKENWINGS_TAG:-release}
+    entrypoint: ["/usr/bin/tini", "--", "/app/entrypoints/server.sh"]
+    pull_policy: missing
+    ports:
+      - "127.0.0.1:${RIFTGYM_GAME_PORT:-5119}:5119/udp"
+      - "127.0.0.1:${RIFTGYM_RL_PORT:-5120}:5120/tcp"
+    environment:
+      # When set (by ComposeRunConfig with settings_json=...), tells
+      # the brokenwings server.sh entrypoint to read the mounted
+      # GameInfo-override.json instead of the image's default.
+      - BROKENWINGS_GAME_INFO
+    volumes:
+      # Optional settings-JSON override. Defaults to /dev/null so the
+      # mount is harmless when no override is requested (image just
+      # ignores the file because BROKENWINGS_GAME_INFO is empty).
+      - ${RIFTGYM_SETTINGS_JSON:-/dev/null}:/app/ChildrenOfTheGraveServerConsole/bin/Release/net10.0/Settings/GameInfo-override.json:ro

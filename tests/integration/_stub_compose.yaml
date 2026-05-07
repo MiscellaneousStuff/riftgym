@@ -1,0 +1,11 @@
+# Tiny compose YAML used by tests/integration/test_compose_plumbing.py.
+# Uses alpine + sleep to validate the docker-compose plumbing in
+# ComposeRunConfig without requiring the brokenwings image.
+services:
+  server:
+    image: alpine:latest
+    command: ["sleep", "300"]
+    pull_policy: missing
+    ports:
+      - "127.0.0.1:${RIFTGYM_GAME_PORT:-15119}:15119/udp"
+      - "127.0.0.1:${RIFTGYM_RL_PORT:-15120}:15120/tcp"

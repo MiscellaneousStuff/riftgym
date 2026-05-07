@@ -11,6 +11,7 @@ import argparse
 import logging
 import signal
 import sys
+from pathlib import Path
 from types import FrameType
 
 from riftgym.launcher import (
@@ -18,10 +19,10 @@ from riftgym.launcher import (
     DEFAULT_BASE_RL_PORT,
     ServerLauncher,
 )
-from riftgym.run_configs import ContainerRunConfig
+from riftgym.run_configs import ComposeRunConfig, ContainerRunConfig
 
 DEFAULT_IMAGE = "ghcr.io/miscellaneousstuff/brokenwings"
-DEFAULT_TAG = "latest"
+DEFAULT_TAG = "release"
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
@@ -30,6 +31,28 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--image", default=DEFAULT_IMAGE)
     p.add_argument("--tag", default=DEFAULT_TAG)
     p.add_argument("--pull", choices=("missing", "always", "never"), default="missing")
+    p.add_argument(
+        "--compose-file",
+        type=Path,
+        default=None,
+        help="Use ComposeRunConfig with this compose YAML instead of "
+        "bare `docker run`. Each spawned server gets its own compose "
+        "project (`-p riftgym-srv-<uuid>`).",
+    )
+    p.add_argument(
+        "--compose-service",
+        default="server",
+        help="Service name to bring up in the compose file. Default `server`.",
+    )
+    p.add_argument(
+        "--settings-json",
+        type=Path,
+        default=None,
+        help="Optional path to a settings JSON to mount into the "
+        "container (compose path only). Mounted at "
+        "Settings/GameInfo-override.json and selected via "
+        "BROKENWINGS_GAME_INFO.",
+    )
     p.add_argument("--base-game-port", type=int, default=DEFAULT_BASE_GAME_PORT)
     p.add_argument("--base-rl-port", type=int, default=DEFAULT_BASE_RL_PORT)
     p.add_argument("--port-ready-timeout", type=float, default=120.0)
@@ -48,7 +71,24 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)-7s %(name)s — %(message)s",
     )
 
-    rc = ContainerRunConfig(image=args.image, tag=args.tag, pull_policy=args.pull)
+    rc: ContainerRunConfig | ComposeRunConfig
+    if args.compose_file is not None:
+        rc = ComposeRunConfig(
+            compose_file=args.compose_file,
+            service=args.compose_service,
+            pull_policy=args.pull,
+            image_override=(args.image if args.image != DEFAULT_IMAGE else None),
+            tag_override=(args.tag if args.tag != DEFAULT_TAG else None),
+            settings_json=args.settings_json,
+        )
+    else:
+        if args.settings_json is not None:
+            print(
+                "warning: --settings-json is only supported with --compose-file; "
+                "ignoring under the bare `docker run` path.",
+                file=sys.stderr,
+            )
+        rc = ContainerRunConfig(image=args.image, tag=args.tag, pull_policy=args.pull)
     launcher = ServerLauncher(
         n=args.n,
         run_config=rc,

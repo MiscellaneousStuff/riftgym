@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from riftgym.run_configs.compose import ComposeHandle, ComposeRunConfig
 from riftgym.run_configs.container import ContainerHandle, ContainerRunConfig
 from riftgym.run_configs.lib import RunConfig, ServerHandle, wait_for_port
 
 __all__ = [
+    "ComposeHandle",
+    "ComposeRunConfig",
     "ContainerHandle",
     "ContainerRunConfig",
     "RunConfig",
