@@ -1,0 +1,48 @@
+{
+    "gameId": 1,
+    "game": {
+        "map": 1,
+        "gameMode": "CLASSIC",
+        "mutators": ["", "", "", "", "", "", "", ""],
+        "dataPackage": "AvCsharp-Scripts"
+    },
+    "gameInfo": {
+        "TICK_RATE": 30,
+        "FORCE_START_TIMER": 180,
+        "MANACOSTS_ENABLED": true,
+        "COOLDOWNS_ENABLED": true,
+        "CHEATS_ENABLED": true,
+        "MINION_SPAWNS_ENABLED": false,
+        "CONTENT_PATH": "../../../../Content",
+        "IS_DAMAGE_TEXT_GLOBAL": false,
+        "ENDGAME_HTTP_POST_ADDRESS": "",
+        "ENABLE_LAUNCHER": false,
+        "LAUNCHER_ADRESS_AND_PORT": "127.0.0.1:25565",
+        "SUPRESS_SCRIPT_NOT_FOUND_LOGS": true,
+        "AB_CLIENT": false,
+        "ENABLE_LOG_AND_CONSOLEWRITELINE": false,
+        "ENABLE_LOG_BehaviourTree": false,
+        "ENABLE_LOG_PKT": false,
+        "ENABLE_REPLAY": false,
+        "ENABLE_ALLOCATION_TRACKER": true,
+        "RL_ENABLED": true,
+        "RL_PORT": 5120,
+        "RL_HZ": 30,
+        "RL_BIND_ADDRESS": "Any",
+        "HEADLESS": true,
+        "KEEP_ALIVE_WHEN_EMPTY": true,
+        "SCRIPT_ASSEMBLIES": ["AvLua-Converted", "AvCsharp-Scripts"]
+    },
+    "players": [
+        {"playerId":  1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Blue0",   "champion": "Ezreal", "team": "BLUE",   "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Blue1",   "champion": "Ezreal", "team": "BLUE",   "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Blue2",   "champion": "Ezreal", "team": "BLUE",   "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Blue3",   "champion": "Ezreal", "team": "BLUE",   "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Blue4",   "champion": "Ezreal", "team": "BLUE",   "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Purple0", "champion": "Ezreal", "team": "PURPLE", "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Purple1", "champion": "Ezreal", "team": "PURPLE", "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Purple2", "champion": "Ezreal", "team": "PURPLE", "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Purple3", "champion": "Ezreal", "team": "PURPLE", "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"},
+        {"playerId": -1, "blowfishKey": "17BLOhi6KZsTtldTsizvHg==", "rank": "DIAMOND", "name": "Purple4", "champion": "Ezreal", "team": "PURPLE", "skin": 0, "summoner1": "SummonerFlash", "summoner2": "SummonerHeal", "ribbon": 2, "useDoomSpells": false, "icon": 0, "runes": {}, "talents": {}, "AIDifficulty": "0"}
+    ]
+}

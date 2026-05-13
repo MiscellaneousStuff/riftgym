@@ -52,6 +52,9 @@ Issues = "https://github.com/MiscellaneousStuff/riftgym/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/riftgym"]
+# Non-Python files under `src/riftgym/` (notably `_data/*.json`, loaded
+# via importlib.resources) are included automatically by hatchling's
+# default package-glob.
 
 [tool.ruff]
 line-length = 100
