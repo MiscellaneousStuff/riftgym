@@ -10,6 +10,14 @@ Observation space: ``Box(float32, (110,))``. See :mod:`riftgym.lib.encoding`.
 Episode termination:
   - ``terminated`` when either champ dies this step
   - ``truncated`` when ``step_count >= max_episode_steps``
+
+Two backends:
+  - **n=1** (``session=None``): the env owns a :class:`LoLEnv` plus its
+    own bridge socket. This is the eval path.
+  - **multilane** (``session=`` + ``lane_idx=``): the env is one lane out
+    of N sharing a :class:`riftgym.env.session.ServerSession` and its
+    single bridge socket. The session handles claim + level_spells in
+    its one-shot init, so we skip those here.
 """
 
 from __future__ import annotations
@@ -25,6 +33,7 @@ from numpy.typing import NDArray
 
 from riftgym.env.lol_env import LoLEnv
 from riftgym.env.rewards import calc_reward
+from riftgym.env.session import ServerSession
 from riftgym.lib.encoding import (
     E_BLINK_RANGE,
     MOVE_DIRS,
@@ -68,6 +77,8 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         claim_opp: bool = True,
         reset_jitter_hp: float = 0.0,
         reset_jitter_mp: float = 0.0,
+        session: ServerSession | None = None,
+        lane_idx: int | None = None,
     ) -> None:
         super().__init__()
         self.me_cid = me_cid
@@ -78,8 +89,9 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         self.opp_policy: OppPolicy = opp_policy if opp_policy is not None else _default_random_opp
         # When True, ``step()`` does not call ``opp_policy`` and does not
         # send the opp action. Useful when something else is driving the
-        # opp client_id (e.g. a human, or the engine BT for vs-engine-bot
-        # eval).
+        # opp client_id (e.g. a human, the engine BT for vs-engine-bot
+        # eval, or — in mirror self-play — a paired LoLGymEnv on the
+        # same session lane that controls the other side).
         self.omit_opp_action = omit_opp_action
         # Initial-state randomization (OAI Five Appendix O.2). When > 0,
         # each episode samples a per-cid fraction in [1 - jitter, 1.0]
@@ -98,20 +110,39 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         # the bridge does not interfere with the opp client_id.
         self.claim_opp = claim_opp
 
-        claim_ids = [me_cid, opp_cid] if claim_opp else [me_cid]
-        self._env = LoLEnv(
-            host=host,
-            port=port,
-            claim_ids=claim_ids,
-            spots=[
-                {"client_id": me_cid, "x": me_spot[0], "y": me_spot[1]},
-                {"client_id": opp_cid, "x": opp_spot[0], "y": opp_spot[1]},
-            ],
-            frame_skip=frame_skip,
-        )
+        # Multilane mode. When `session` is given, this env is one lane
+        # out of N sharing the session's single bridge socket.
+        # step/reset delegate to `session.step_lane(lane_idx, ...)`
+        # and `session.reset_lane(lane_idx, ...)`. When None, this env
+        # owns its own LoLEnv + socket (the n=1 eval path).
+        if (session is None) != (lane_idx is None):
+            raise ValueError("session and lane_idx must be both set or both None")
+        self._session: ServerSession | None = session
+        self._lane_idx: int | None = lane_idx
+
+        self._env: LoLEnv | None
+        if session is None:
+            claim_ids = [me_cid, opp_cid] if claim_opp else [me_cid]
+            self._env = LoLEnv(
+                host=host,
+                port=port,
+                claim_ids=claim_ids,
+                spots=[
+                    {"client_id": me_cid, "x": me_spot[0], "y": me_spot[1]},
+                    {"client_id": opp_cid, "x": opp_spot[0], "y": opp_spot[1]},
+                ],
+                frame_skip=frame_skip,
+            )
+            self._leveled = False
+        else:
+            # Session owns the socket, the claim, and the level_spell
+            # init. ``_leveled`` starts True because the session levels
+            # all claimed cids during its one-shot init in
+            # ``_ensure_initialized``.
+            self._env = None
+            self._leveled = True
         self._prev_obs: Obs | None = None
         self._step_count = 0
-        self._leveled = False
 
         self.action_space = spaces.Discrete(N_ACTIONS)
         self.observation_space = spaces.Box(
@@ -139,10 +170,10 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
                     fields["mp_frac"] = 1.0 - float(self.rng.uniform(0.0, self.reset_jitter_mp))
                 extra_spot_fields[cid] = fields
 
-        obs = self._env.reset(extra_spot_fields=extra_spot_fields)
+        obs = self._reset_backend(extra_spot_fields)
         if not self._leveled:
             self._level_spells_once()
-            obs = self._env.step([])
+            obs = self._step_backend([])
         obs = self._level_unleveled_spells(obs)
         self._prev_obs = obs
         self._step_count = 0
@@ -158,7 +189,7 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         else:
             opp_a = self.opp_policy(self, self._prev_obs)
             actions = [my_a, opp_a]
-        obs = self._env.step(actions)
+        obs = self._step_backend(actions)
         reward = self.reward_fn(self._prev_obs, obs, me=self.me_cid, opp=self.opp_cid)
         me = find_champ(obs, self.me_cid)
         opp = find_champ(obs, self.opp_cid)
@@ -176,13 +207,36 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         )
 
     def close(self) -> None:
-        self._env.close()
+        # In multilane mode the session owns the socket; closing it from
+        # one lane would yank it out from under the others. The caller
+        # (``ServerLauncher``, ``make_multilane_envs`` consumer) is
+        # responsible for ``session.close()``.
+        if self._env is not None:
+            self._env.close()
 
     def action_masks(self) -> NDArray[np.bool_]:
         """Action mask for sb3-contrib's MaskablePPO. 13-bool array, True = allowed."""
         if self._prev_obs is None:
             return np.ones(N_ACTIONS, dtype=np.bool_)
         return action_mask(self._prev_obs, self.me_cid, self.opp_cid)
+
+    # ---- backend dispatch -------------------------------------------------
+
+    def _reset_backend(
+        self, extra_spot_fields: dict[int, dict[str, Any]] | None
+    ) -> Obs:
+        if self._session is not None:
+            assert self._lane_idx is not None
+            return self._session.reset_lane(self._lane_idx, extra_spot_fields)
+        assert self._env is not None
+        return self._env.reset(extra_spot_fields=extra_spot_fields)
+
+    def _step_backend(self, actions: list[Action]) -> Obs:
+        if self._session is not None:
+            assert self._lane_idx is not None
+            return self._session.step_lane(self._lane_idx, actions)
+        assert self._env is not None
+        return self._env.step(actions)
 
     # ---- internals --------------------------------------------------------
 
@@ -234,7 +288,7 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
         for cid in (self.me_cid, self.opp_cid):
             for slot in range(4):
                 acts.append({"type": "level_spell", "client_id": cid, "slot": slot})
-        self._env.step(acts)
+        self._step_backend(acts)
         self._leveled = True
 
     def _level_unleveled_spells(self, obs: Obs) -> Obs:
@@ -256,4 +310,4 @@ class LoLGymEnv(gym.Env[NDArray[np.float32], np.int64]):
                     acts.append({"type": "level_spell", "client_id": cid, "slot": slot})
         if not acts:
             return obs
-        return self._env.step(acts)
+        return self._step_backend(acts)
