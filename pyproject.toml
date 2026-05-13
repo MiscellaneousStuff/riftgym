@@ -45,6 +45,7 @@ dev = [
 [project.scripts]
 riftgym-eval = "riftgym.bin.eval:main"
 riftgym-launch = "riftgym.bin.launch_servers:main"
+riftgym-train = "riftgym.bin.ppo_train:main"
 
 [project.urls]
 Repository = "https://github.com/MiscellaneousStuff/riftgym"
