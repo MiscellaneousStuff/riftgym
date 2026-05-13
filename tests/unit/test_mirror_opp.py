@@ -45,21 +45,24 @@ class _FakeEnv:
 
 
 def _obs_with_two_champs() -> dict[str, Any]:
-    """Minimal obs the encoder can ingest. Two champs at known positions
-    with fully-leveled spells so the action mask doesn't crash."""
+    """Minimal obs the encoder can ingest. Schema mirrors a real bridge
+    frame (see Tier 1 connectivity smoke): every champ needs hp/max_hp,
+    mp/max_mp, level, x/y, gold, alive, net_id, team, plus a `spells`
+    list so the action mask doesn't crash on its cooldown / mana
+    lookups."""
     return {
         "tick": 1000,
         "champs": [
             {
-                "client_id": 0, "alive": True, "hp": 100, "hp_max": 100,
-                "mp": 50, "mp_max": 50, "x": 6000.0, "y": 6000.0,
-                "level": 1, "gold": 0, "net_id": 100,
+                "client_id": 0, "alive": True, "hp": 100, "max_hp": 100,
+                "mp": 50, "max_mp": 50, "x": 6000.0, "y": 6000.0,
+                "level": 1, "gold": 0, "net_id": 100, "team": "TEAM_ORDER",
                 "spells": [{"level": 1, "cooldown_s": 0.0, "mana_cost": 0.0}] * 4,
             },
             {
-                "client_id": 1, "alive": True, "hp": 100, "hp_max": 100,
-                "mp": 50, "mp_max": 50, "x": 8000.0, "y": 8000.0,
-                "level": 1, "gold": 0, "net_id": 200,
+                "client_id": 1, "alive": True, "hp": 100, "max_hp": 100,
+                "mp": 50, "max_mp": 50, "x": 8000.0, "y": 8000.0,
+                "level": 1, "gold": 0, "net_id": 200, "team": "TEAM_CHAOS",
                 "spells": [{"level": 1, "cooldown_s": 0.0, "mana_cost": 0.0}] * 4,
             },
         ],
