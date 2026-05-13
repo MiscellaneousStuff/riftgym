@@ -33,6 +33,16 @@ sb3 = [
     "stable-baselines3>=2.4",
     "sb3-contrib>=2.4",
     "torch>=2.2",
+    # sb3 imports `tensorboard` lazily inside `_setup_learn` whenever
+    # `tensorboard_log` is set on the model (which the trainer always
+    # sets so users get TB events for free). Without this the trainer
+    # ImportErrors at model.learn() instead of clean construction.
+    "tensorboard>=2.10",
+    # `progress_bar=True` in model.learn() pulls in ProgressBarCallback,
+    # which hard-imports tqdm + rich. Same lazy-import-at-runtime trap
+    # as tensorboard.
+    "tqdm>=4.65",
+    "rich>=13.0",
 ]
 perf = ["psutil>=5.9"]
 dev = [
